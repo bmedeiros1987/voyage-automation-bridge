@@ -1,5 +1,6 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 const PORT = Number(process.env.PORT || 3000);
 const TINYFISH_API_KEY = process.env.TINYFISH_API_KEY || '';
@@ -8,6 +9,7 @@ const TINYFISH_BASE_URL = 'https://agent.tinyfish.ai';
 const RATE_LIMIT_PER_MINUTE = Math.max(1, Math.min(120, Number(process.env.RATE_LIMIT_PER_MINUTE || 20)));
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_GOAL_LENGTH = 6000;
+const CONSOLE_HTML = readFileSync(new URL('./public/console.html', import.meta.url), 'utf8');
 const allowedHosts = new Set(
   (process.env.ALLOWED_HOSTS || 'console.cloud.google.com,news.ycombinator.com')
     .split(',')
@@ -17,15 +19,42 @@ const allowedHosts = new Set(
 
 const rateState = new Map();
 
+function commonHeaders(contentType) {
+  return {
+    'content-type': contentType,
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+    'referrer-policy': 'no-referrer',
+    'permissions-policy': 'camera=(), microphone=(), geolocation=()',
+    'x-frame-options': 'DENY',
+  };
+}
+
 function json(res, status, body) {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
-    'content-type': 'application/json; charset=utf-8',
+    ...commonHeaders('application/json; charset=utf-8'),
     'content-length': Buffer.byteLength(payload),
-    'cache-control': 'no-store',
-    'x-content-type-options': 'nosniff',
   });
   res.end(payload);
+}
+
+function html(res, status, body) {
+  res.writeHead(status, {
+    ...commonHeaders('text/html; charset=utf-8'),
+    'content-length': Buffer.byteLength(body),
+    'content-security-policy': "default-src 'none'; connect-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'; img-src 'none'",
+  });
+  res.end(body);
+}
+
+function redirect(res, location) {
+  res.writeHead(302, {
+    ...commonHeaders('text/plain; charset=utf-8'),
+    location,
+    'content-length': '0',
+  });
+  res.end();
 }
 
 function secureEqual(a, b) {
@@ -172,9 +201,6 @@ async function handleCreateRun(req, res) {
     return json(res, 400, { ok: false, error: 'profile_id_requires_use_profile' });
   }
 
-  // Keep the first-hop payload deliberately minimal. TinyFish documents url, goal,
-  // browser_profile and api_integration as sufficient for a basic async run. Optional
-  // profile fields are only sent when explicitly requested.
   const payload = {
     url: urlCheck.url,
     goal,
@@ -207,6 +233,14 @@ async function handleGetRun(res, runId) {
 async function handler(req, res) {
   try {
     const pathname = new URL(req.url, 'http://localhost').pathname;
+
+    if (req.method === 'GET' && pathname === '/') {
+      return redirect(res, '/console');
+    }
+
+    if (req.method === 'GET' && (pathname === '/console' || pathname === '/console/')) {
+      return html(res, 200, CONSOLE_HTML);
+    }
 
     if (req.method === 'GET' && pathname === '/health') {
       return json(res, 200, {
