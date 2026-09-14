@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b0f16">
+  <title>Voyage Automation Console</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b0f16;--panel:#111722;--panel2:#171f2c;--text:#f5f7fb;--muted:#9ca7b8;--line:#273244;--gold:#d8b66a;--gold2:#f0d58f;--good:#72d49a;--bad:#ff8b8b;--warn:#ffc66d;--shadow:0 20px 60px rgba(0,0,0,.32)}
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(circle at top,#172236 0,#0b0f16 38%,#080b10 100%);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
+    .wrap{width:min(760px,100%);margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom))}
+    .brand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 2px 18px}
+    .brand h1{font-size:22px;margin:0;letter-spacing:.02em}.brand small{display:block;color:var(--muted);font-weight:500;margin-top:3px}
+    .pill{border:1px solid var(--line);background:#0f1520;border-radius:999px;padding:8px 11px;color:var(--muted);font-size:12px;white-space:nowrap}
+    .card{background:linear-gradient(180deg,rgba(23,31,44,.96),rgba(15,21,31,.96));border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
+    .card h2{font-size:16px;margin:0 0 12px}.card p{margin:0 0 12px;color:var(--muted)}
+    label{display:block;font-size:12px;color:var(--muted);margin:12px 0 6px}
+    input,textarea,select,button{font:inherit}
+    input,textarea,select{width:100%;border:1px solid #344155;background:#0c121c;color:var(--text);border-radius:14px;padding:12px 13px;outline:none}
+    input:focus,textarea:focus,select:focus{border-color:#8d784d;box-shadow:0 0 0 3px rgba(216,182,106,.1)}
+    textarea{min-height:150px;resize:vertical}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .row{display:flex;align-items:center;gap:10px}.row input[type=checkbox]{width:20px;height:20px;margin:0;accent-color:var(--gold)}
+    .row label{margin:0;font-size:14px;color:var(--text)}
+    .presets{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    button{border:0;border-radius:14px;padding:12px 14px;font-weight:700;cursor:pointer}
+    button.primary{width:100%;background:linear-gradient(135deg,var(--gold2),var(--gold));color:#17130a;margin-top:14px}
+    button.secondary{background:#182231;color:#dfe6f0;border:1px solid var(--line);text-align:left;font-weight:600}
+    button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .status{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
+    .dot{width:9px;height:9px;border-radius:50%;background:#667085;display:inline-block;margin-right:8px}.dot.run{background:var(--warn);box-shadow:0 0 0 5px rgba(255,198,109,.08)}.dot.ok{background:var(--good)}.dot.bad{background:var(--bad)}
+    .meta{color:var(--muted);font-size:12px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;word-break:break-word}
+    pre{white-space:pre-wrap;word-break:break-word;margin:10px 0 0;background:#090e16;border:1px solid #263246;border-radius:14px;padding:12px;max-height:420px;overflow:auto;color:#dfe7f2}
+    .hidden{display:none!important}.note{font-size:12px;color:var(--muted);margin-top:8px}.danger{color:var(--bad)}
+    .footer{text-align:center;color:#6f7a8a;font-size:11px;padding:10px 0 0}
+    @media (max-width:560px){.grid,.presets{grid-template-columns:1fr}.wrap{padding-left:12px;padding-right:12px}.card{border-radius:18px}.brand h1{font-size:20px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="brand">
+      <div><h1>Voyage Automation</h1><small>TinyFish mobile console</small></div>
+      <div id="healthBadge" class="pill">checando bridge…</div>
+    </div>
+
+    <section class="card">
+      <h2>Acesso</h2>
+      <p>A chave do bridge é usada somente nesta página e não é enviada ao GitHub.</p>
+      <label for="bridgeKey">BRIDGE_API_KEY</label>
+      <input id="bridgeKey" type="password" autocomplete="off" placeholder="Cole a chave do bridge">
+      <div class="note">Por segurança, a chave não é salva em localStorage.</div>
+    </section>
+
+    <section class="card">
+      <h2>Tarefa</h2>
+      <div class="presets">
+        <button class="secondary" data-preset="oauth-audience">Google OAuth · Audience</button>
+        <button class="secondary" data-preset="oauth-client">Google OAuth · Client</button>
+        <button class="secondary" data-preset="gmail">Gmail API · Scopes</button>
+        <button class="secondary" data-preset="hn">Teste rápido · Hacker News</button>
+      </div>
+
+      <label for="targetUrl">URL</label>
+      <input id="targetUrl" type="url" inputmode="url" placeholder="https://console.cloud.google.com/">
+
+      <label for="goal">Objetivo</label>
+      <textarea id="goal" placeholder="Descreva uma tarefa curta e objetiva."></textarea>
+
+      <div class="grid">
+        <div>
+          <label for="browserProfile">Browser profile</label>
+          <select id="browserProfile"><option value="stealth">stealth</option><option value="lite">lite</option></select>
+        </div>
+        <div>
+          <label for="profileId">Profile ID</label>
+          <input id="profileId" placeholder="prof_…" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <input id="useProfile" type="checkbox">
+        <label for="useProfile">Usar Browser Context Profile salvo</label>
+      </div>
+
+      <button id="runBtn" class="primary">Executar tarefa</button>
+
+      <div id="statusBox" class="status hidden">
+        <div><span id="statusDot" class="dot"></span><strong id="statusText">—</strong></div>
+        <button id="pollBtn" class="ghost">Atualizar</button>
+      </div>
+      <div id="runMeta" class="meta hidden"></div>
+    </section>
+
+    <section id="resultCard" class="card hidden">
+      <h2>Resultado</h2>
+      <pre id="result"></pre>
+    </section>
+
+    <section id="errorCard" class="card hidden">
+      <h2 class="danger">Erro</h2>
+      <pre id="error"></pre>
+    </section>
+
+    <div class="footer">Voyage Automation Bridge · read-only by default for audit presets</div>
+  </main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const bridgeKey = $('bridgeKey');
+  const targetUrl = $('targetUrl');
+  const goal = $('goal');
+  const browserProfile = $('browserProfile');
+  const profileId = $('profileId');
+  const useProfile = $('useProfile');
+  const runBtn = $('runBtn');
+  const pollBtn = $('pollBtn');
+  const statusBox = $('statusBox');
+  const statusText = $('statusText');
+  const statusDot = $('statusDot');
+  const runMeta = $('runMeta');
+  const resultCard = $('resultCard');
+  const result = $('result');
+  const errorCard = $('errorCard');
+  const error = $('error');
+  let currentRunId = null;
+  let timer = null;
+
+  const presets = {
+    'oauth-audience': {
+      url: 'https://console.cloud.google.com/',
+      profile: true,
+      goal: `READ-ONLY task.\n\nInspect only Google Auth Platform audience/publishing configuration for the currently active project.\n\nReport only:\n1. active project name/id\n2. publishing status: Testing or Production\n3. whether test users are configured\n4. whether the currently signed-in account is listed as an allowed test user, if visible\n\nDo not inspect client secrets. Do not modify anything. Do not navigate to unrelated settings. If authentication, MFA or reauthentication is required, stop and report that. Return as soon as these four items are known.`
+    },
+    'oauth-client': {
+      url: 'https://console.cloud.google.com/apis/credentials',
+      profile: true,
+      goal: `READ-ONLY task. Inspect only the OAuth client used by Voyage. Report application type, authorized JavaScript origins and authorized redirect URIs. Do not reveal client secrets. Do not modify anything. If authentication, MFA or reauthentication is required, stop and report that. Return immediately after these items are known.`
+    },
+    gmail: {
+      url: 'https://console.cloud.google.com/apis/library/gmail.googleapis.com',
+      profile: true,
+      goal: `READ-ONLY task. Report only whether the Gmail API is enabled for the active project and which OAuth scopes are configured for Google Auth Platform if visible. Confirm whether https://www.googleapis.com/auth/gmail.readonly is present. Do not modify anything and do not reveal secrets. Stop if reauthentication is required.`
+    },
+    hn: {
+      url: 'https://news.ycombinator.com/',
+      profile: false,
+      goal: 'Read the current Hacker News front page and report the title of the top story.'
+    }
+  };
+
+  function setPreset(name) {
+    const p = presets[name];
+    if (!p) return;
+    targetUrl.value = p.url;
+    goal.value = p.goal;
+    useProfile.checked = p.profile;
+    browserProfile.value = p.profile ? 'stealth' : 'lite';
+  }
+
+  function setStatus(value) {
+    statusBox.classList.remove('hidden');
+    statusText.textContent = value || 'UNKNOWN';
+    statusDot.className = 'dot';
+    if (['PENDING','RUNNING'].includes(value)) statusDot.classList.add('run');
+    else if (value === 'COMPLETED') statusDot.classList.add('ok');
+    else if (['FAILED','CANCELLED'].includes(value)) statusDot.classList.add('bad');
+  }
+
+  function showError(payload) {
+    errorCard.classList.remove('hidden');
+    error.textContent = typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2);
+  }
+
+  function clearOutput() {
+    resultCard.classList.add('hidden');
+    errorCard.classList.add('hidden');
+    result.textContent = '';
+    error.textContent = '';
+    runMeta.classList.add('hidden');
+  }
+
+  async function api(path, options = {}) {
+    const key = bridgeKey.value.trim();
+    if (!key) throw new Error('Informe a BRIDGE_API_KEY.');
+    const response = await fetch(path, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Bridge-Key': key,
+        ...(options.headers || {})
+      }
+    });
+    const body = await response.json().catch(() => ({ ok:false, error:'invalid_response' }));
+    if (!response.ok) {
+      const e = new Error(body.error || `HTTP ${response.status}`);
+      e.body = body;
+      throw e;
+    }
+    return body;
+  }
+
+  async function startRun() {
+    clearOutput();
+    if (!targetUrl.value.trim() || !goal.value.trim()) {
+      showError('Preencha URL e objetivo.');
+      return;
+    }
+    if (profileId.value.trim() && !useProfile.checked) {
+      showError('Marque “Usar Browser Context Profile salvo” para enviar um Profile ID.');
+      return;
+    }
+    runBtn.disabled = true;
+    runBtn.textContent = 'Enviando…';
+    try {
+      const body = {
+        url: targetUrl.value.trim(),
+        goal: goal.value.trim(),
+        browserProfile: browserProfile.value,
+        useProfile: useProfile.checked
+      };
+      if (profileId.value.trim()) body.profileId = profileId.value.trim();
+      const created = await api('/v1/tinyfish/runs', { method:'POST', body: JSON.stringify(body) });
+      currentRunId = created.run_id;
+      if (!currentRunId) throw new Error(created.error || 'TinyFish não retornou run_id.');
+      setStatus('PENDING');
+      runMeta.classList.remove('hidden');
+      runMeta.textContent = `run_id: ${currentRunId}`;
+      schedulePoll(2500);
+    } catch (e) {
+      showError(e.body || e.message || 'Falha ao iniciar tarefa.');
+    } finally {
+      runBtn.disabled = false;
+      runBtn.textContent = 'Executar tarefa';
+    }
+  }
+
+  async function poll() {
+    if (!currentRunId) return;
+    try {
+      const payload = await api(`/v1/tinyfish/runs/${encodeURIComponent(currentRunId)}`, { method:'GET', headers:{'Content-Type':'application/json'} });
+      const run = payload.run || {};
+      setStatus(run.status);
+      const parts = [`run_id: ${run.run_id || currentRunId}`];
+      if (run.num_of_steps != null) parts.push(`steps: ${run.num_of_steps}`);
+      if (run.started_at) parts.push(`started: ${run.started_at}`);
+      if (run.finished_at) parts.push(`finished: ${run.finished_at}`);
+      runMeta.classList.remove('hidden');
+      runMeta.textContent = parts.join(' · ');
+      if (run.status === 'COMPLETED') {
+        stopPolling();
+        resultCard.classList.remove('hidden');
+        result.textContent = typeof run.result === 'string' ? run.result : JSON.stringify(run.result, null, 2);
+      } else if (['FAILED','CANCELLED'].includes(run.status)) {
+        stopPolling();
+        showError(run.error || { error: run.status });
+      } else {
+        schedulePoll(5000);
+      }
+    } catch (e) {
+      stopPolling();
+      showError(e.body || e.message || 'Falha ao consultar execução.');
+    }
+  }
+
+  function schedulePoll(ms) { stopPolling(); timer = setTimeout(poll, ms); }
+  function stopPolling() { if (timer) clearTimeout(timer); timer = null; }
+
+  document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => setPreset(b.dataset.preset)));
+  runBtn.addEventListener('click', startRun);
+  pollBtn.addEventListener('click', () => { stopPolling(); poll(); });
+
+  fetch('/health').then(r => r.json()).then(h => {
+    const badge = $('healthBadge');
+    const ok = h.ok && h.tinyfishConfigured && h.bridgeAuthConfigured;
+    badge.textContent = ok ? 'bridge online' : 'configuração incompleta';
+    badge.style.color = ok ? 'var(--good)' : 'var(--warn)';
+  }).catch(() => { $('healthBadge').textContent = 'bridge indisponível'; $('healthBadge').style.color = 'var(--bad)'; });
+
+  setPreset('oauth-audience');
+})();
+</script>
+</body>
+</html>
