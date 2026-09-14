@@ -71,6 +71,28 @@ function sanitizeRun(run) {
   };
 }
 
+function sanitizeUpstreamFailure(error) {
+  const body = error?.body && typeof error.body === 'object' ? error.body : {};
+  const nested = body.error && typeof body.error === 'object' ? body.error : {};
+
+  return {
+    upstreamStatus: Number.isInteger(error?.status) ? error.status : null,
+    upstreamCode:
+      typeof nested.code === 'string'
+        ? nested.code
+        : typeof body.error === 'string'
+          ? body.error
+          : null,
+    upstreamMessage:
+      typeof nested.message === 'string'
+        ? nested.message.slice(0, 500)
+        : typeof body.message === 'string'
+          ? body.message.slice(0, 500)
+          : null,
+    upstreamRequestId: typeof body.request_id === 'string' ? body.request_id.slice(0, 200) : null,
+  };
+}
+
 function checkRateLimit(req) {
   const now = Date.now();
   const windowStart = now - 60_000;
@@ -142,29 +164,29 @@ async function handleCreateRun(req, res) {
 
   const browserProfile = body.browserProfile === 'stealth' ? 'stealth' : 'lite';
   const useProfile = body.useProfile === true;
+  const profileId = typeof body.profileId === 'string' ? body.profileId.trim() : '';
+  if (profileId && !/^prof_[A-Za-z0-9_-]{6,128}$/.test(profileId)) {
+    return json(res, 400, { ok: false, error: 'invalid_profile_id' });
+  }
+  if (profileId && !useProfile) {
+    return json(res, 400, { ok: false, error: 'profile_id_requires_use_profile' });
+  }
+
+  // Keep the first-hop payload deliberately minimal. TinyFish documents url, goal,
+  // browser_profile and api_integration as sufficient for a basic async run. Optional
+  // profile fields are only sent when explicitly requested.
+  const payload = {
+    url: urlCheck.url,
+    goal,
+    browser_profile: browserProfile,
+    api_integration: 'voyage-automation-bridge',
+  };
+  if (useProfile) payload.use_profile = true;
+  if (profileId) payload.profile_id = profileId;
 
   const upstream = await tinyfishFetch('/v1/automation/run-async', {
     method: 'POST',
-    body: JSON.stringify({
-      url: urlCheck.url,
-      goal,
-      browser_profile: browserProfile,
-      api_integration: 'voyage-automation-bridge',
-      agent_config: {
-        mode: 'strict',
-        cursor_style: 'standard',
-        max_steps: 100,
-        max_duration_seconds: 600,
-      },
-      capture_config: {
-        elements: false,
-        snapshots: false,
-        screenshots: false,
-        recording: false,
-      },
-      use_vault: false,
-      use_profile: useProfile,
-    }),
+    body: JSON.stringify(payload),
   });
 
   return json(res, 202, {
@@ -224,8 +246,7 @@ async function handler(req, res) {
       return json(res, 502, {
         ok: false,
         error: 'tinyfish_request_failed',
-        upstreamStatus: error.status ?? null,
-        upstreamError: error.body?.error?.code || error.body?.error || null,
+        ...sanitizeUpstreamFailure(error),
       });
     }
     console.error('[bridge] request failed', error?.message || 'unknown_error');
