@@ -143,6 +143,8 @@
   let profileConfigured = false;
   let currentRunId = null;
   let timer = null;
+  let pollFailures = 0;
+  const ACTIVE_RUN_KEY = 'voyage_console_active_run';
 
   const presets = {
     'oauth-audience': {
@@ -203,6 +205,28 @@
     error.textContent = typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2);
   }
 
+  function clearTransientError() {
+    errorCard.classList.add('hidden');
+    error.textContent = '';
+  }
+
+  function rememberActiveRun(runId) {
+    try {
+      if (runId) localStorage.setItem(ACTIVE_RUN_KEY, runId);
+      else localStorage.removeItem(ACTIVE_RUN_KEY);
+    } catch {}
+  }
+
+  function restoreActiveRun() {
+    if (!authenticated || currentRunId) return;
+    try { currentRunId = localStorage.getItem(ACTIVE_RUN_KEY) || null; } catch {}
+    if (!currentRunId) return;
+    setStatus('PENDING');
+    runMeta.classList.remove('hidden');
+    runMeta.textContent = `run_id: ${currentRunId} · retomando acompanhamento…`;
+    schedulePoll(500);
+  }
+
   function clearOutput() {
     resultCard.classList.add('hidden');
     errorCard.classList.add('hidden');
@@ -242,6 +266,7 @@
       authenticated = false;
     }
     renderSession();
+    restoreActiveRun();
   }
 
   async function login() {
@@ -259,6 +284,7 @@
       authenticated = state.authenticated === true;
       profileConfigured = state.profileConfigured === true;
       renderSession();
+      restoreActiveRun();
     } catch (e) {
       showError(e.body || e.message || 'Não foi possível conectar este dispositivo.');
     } finally {
@@ -272,6 +298,7 @@
     try { await request('/v1/session/logout', { method:'POST', body:'{}' }); } catch {}
     authenticated = false;
     currentRunId = null;
+    rememberActiveRun(null);
     clearOutput();
     renderSession();
   }
@@ -298,6 +325,8 @@
       });
       currentRunId = created.run_id;
       if (!currentRunId) throw new Error(created.error || 'TinyFish não retornou run_id.');
+      rememberActiveRun(currentRunId);
+      pollFailures = 0;
       setStatus('PENDING');
       runMeta.classList.remove('hidden');
       runMeta.textContent = `run_id: ${currentRunId}`;
@@ -314,6 +343,8 @@
     if (!currentRunId || !authenticated) return;
     try {
       const payload = await request(`/v1/tinyfish/runs/${encodeURIComponent(currentRunId)}`);
+      pollFailures = 0;
+      clearTransientError();
       const run = payload.run || {};
       setStatus(run.status);
       const parts = [`run_id: ${run.run_id || currentRunId}`];
@@ -325,17 +356,32 @@
 
       if (run.status === 'COMPLETED') {
         stopPolling();
+        rememberActiveRun(null);
+        currentRunId = null;
         resultCard.classList.remove('hidden');
         result.textContent = typeof run.result === 'string' ? run.result : JSON.stringify(run.result, null, 2);
       } else if (['FAILED','CANCELLED'].includes(run.status)) {
         stopPolling();
+        rememberActiveRun(null);
+        currentRunId = null;
         showError(run.error || { error: run.status });
       } else {
         schedulePoll(5000);
       }
     } catch (e) {
-      stopPolling();
-      showError(e.body || e.message || 'Falha ao consultar execução.');
+      if (!authenticated) {
+        stopPolling();
+        showError('Sua sessão expirou. Conecte este dispositivo novamente para continuar acompanhando a tarefa.');
+        return;
+      }
+
+      pollFailures += 1;
+      const delay = Math.min(30_000, 2500 * (2 ** Math.min(pollFailures, 3)));
+      errorCard.classList.add('hidden');
+      const seconds = Math.ceil(delay / 1000);
+      runMeta.classList.remove('hidden');
+      runMeta.textContent = `run_id: ${currentRunId} · conexão oscilou; tentando novamente em ${seconds}s`;
+      schedulePoll(delay);
     }
   }
 
@@ -348,7 +394,12 @@
   loginBtn.addEventListener('click', login);
   logoutBtn.addEventListener('click', logout);
   runBtn.addEventListener('click', startRun);
-  pollBtn.addEventListener('click', () => { stopPolling(); poll(); });
+  pollBtn.addEventListener('click', () => {
+    stopPolling();
+    pollFailures = 0;
+    clearTransientError();
+    poll();
+  });
   bridgeKey.addEventListener('keydown', (event) => { if (event.key === 'Enter') login(); });
 
   fetch('/health', { credentials:'same-origin' })
