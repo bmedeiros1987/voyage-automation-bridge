@@ -6,55 +6,69 @@
   <meta name="theme-color" content="#0b0f16">
   <title>Voyage Automation Console</title>
   <style>
-    :root{color-scheme:dark;--bg:#0b0f16;--panel:#111722;--panel2:#171f2c;--text:#f5f7fb;--muted:#9ca7b8;--line:#273244;--gold:#d8b66a;--gold2:#f0d58f;--good:#72d49a;--bad:#ff8b8b;--warn:#ffc66d;--shadow:0 20px 60px rgba(0,0,0,.32)}
+    :root{color-scheme:dark;--bg:#0b0f16;--panel:#111722;--text:#f5f7fb;--muted:#9ca7b8;--line:#273244;--gold:#d8b66a;--gold2:#f0d58f;--good:#72d49a;--bad:#ff8b8b;--warn:#ffc66d;--shadow:0 20px 60px rgba(0,0,0,.32)}
     *{box-sizing:border-box}
-    body{margin:0;background:radial-gradient(circle at top,#172236 0,#0b0f16 38%,#080b10 100%);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
-    .wrap{width:min(760px,100%);margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom))}
-    .brand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 2px 18px}
-    .brand h1{font-size:22px;margin:0;letter-spacing:.02em}.brand small{display:block;color:var(--muted);font-weight:500;margin-top:3px}
+    body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#172236 0,#0b0f16 38%,#080b10 100%);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .wrap{width:min(760px,100%);margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 12px calc(34px + env(safe-area-inset-bottom))}
+    .brand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:5px 3px 18px}
+    .brand h1{font-size:21px;margin:0;letter-spacing:.02em}.brand small{display:block;color:var(--muted);font-weight:500;margin-top:3px}
     .pill{border:1px solid var(--line);background:#0f1520;border-radius:999px;padding:8px 11px;color:var(--muted);font-size:12px;white-space:nowrap}
-    .card{background:linear-gradient(180deg,rgba(23,31,44,.96),rgba(15,21,31,.96));border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
-    .card h2{font-size:16px;margin:0 0 12px}.card p{margin:0 0 12px;color:var(--muted)}
+    .card{background:linear-gradient(180deg,rgba(23,31,44,.97),rgba(15,21,31,.97));border:1px solid var(--line);border-radius:19px;padding:16px;box-shadow:var(--shadow);margin-bottom:13px}
+    h2{font-size:16px;margin:0 0 9px}.copy{margin:0 0 12px;color:var(--muted)}
     label{display:block;font-size:12px;color:var(--muted);margin:12px 0 6px}
     input,textarea,select,button{font:inherit}
     input,textarea,select{width:100%;border:1px solid #344155;background:#0c121c;color:var(--text);border-radius:14px;padding:12px 13px;outline:none}
     input:focus,textarea:focus,select:focus{border-color:#8d784d;box-shadow:0 0 0 3px rgba(216,182,106,.1)}
-    textarea{min-height:150px;resize:vertical}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .row{display:flex;align-items:center;gap:10px}.row input[type=checkbox]{width:20px;height:20px;margin:0;accent-color:var(--gold)}
-    .row label{margin:0;font-size:14px;color:var(--text)}
-    .presets{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    textarea{min-height:145px;resize:vertical}
     button{border:0;border-radius:14px;padding:12px 14px;font-weight:700;cursor:pointer}
-    button.primary{width:100%;background:linear-gradient(135deg,var(--gold2),var(--gold));color:#17130a;margin-top:14px}
+    button.primary{width:100%;background:linear-gradient(135deg,var(--gold2),var(--gold));color:#17130a;margin-top:12px}
     button.secondary{background:#182231;color:#dfe6f0;border:1px solid var(--line);text-align:left;font-weight:600}
     button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
-    button:disabled{opacity:.55;cursor:not-allowed}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .presets{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .session{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .session-main{display:flex;align-items:center;gap:10px}
+    .dot{width:9px;height:9px;border-radius:50%;background:#667085;display:inline-block}.dot.good{background:var(--good);box-shadow:0 0 0 5px rgba(114,212,154,.08)}.dot.run{background:var(--warn);box-shadow:0 0 0 5px rgba(255,198,109,.08)}.dot.bad{background:var(--bad)}
+    .note,.meta{font-size:12px;color:var(--muted)}.note{margin-top:8px}
+    details{margin-top:13px;border-top:1px solid var(--line);padding-top:12px}summary{cursor:pointer;color:var(--muted);font-size:13px}
+    .row{display:flex;align-items:center;gap:10px;margin-top:12px}.row input[type=checkbox]{width:20px;height:20px;margin:0;accent-color:var(--gold)}.row label{margin:0;font-size:14px;color:var(--text)}
     .status{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
-    .dot{width:9px;height:9px;border-radius:50%;background:#667085;display:inline-block;margin-right:8px}.dot.run{background:var(--warn);box-shadow:0 0 0 5px rgba(255,198,109,.08)}.dot.ok{background:var(--good)}.dot.bad{background:var(--bad)}
-    .meta{color:var(--muted);font-size:12px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;word-break:break-word}
     pre{white-space:pre-wrap;word-break:break-word;margin:10px 0 0;background:#090e16;border:1px solid #263246;border-radius:14px;padding:12px;max-height:420px;overflow:auto;color:#dfe7f2}
-    .hidden{display:none!important}.note{font-size:12px;color:var(--muted);margin-top:8px}.danger{color:var(--bad)}
-    .footer{text-align:center;color:#6f7a8a;font-size:11px;padding:10px 0 0}
-    @media (max-width:560px){.grid,.presets{grid-template-columns:1fr}.wrap{padding-left:12px;padding-right:12px}.card{border-radius:18px}.brand h1{font-size:20px}}
+    .hidden{display:none!important}.danger{color:var(--bad)}.footer{text-align:center;color:#6f7a8a;font-size:11px;padding:8px 0 0}
+    @media(max-width:560px){.presets{grid-template-columns:1fr}.brand h1{font-size:20px}.session{align-items:flex-start;flex-direction:column}.session button{width:100%}}
   </style>
 </head>
 <body>
   <main class="wrap">
     <div class="brand">
-      <div><h1>Voyage Automation</h1><small>TinyFish mobile console</small></div>
+      <div><h1>Voyage Automation</h1><small>TinyFish · console móvel</small></div>
       <div id="healthBadge" class="pill">checando bridge…</div>
     </div>
 
     <section class="card">
-      <h2>Acesso</h2>
-      <p>A chave do bridge é usada somente nesta página e não é enviada ao GitHub.</p>
-      <label for="bridgeKey">BRIDGE_API_KEY</label>
-      <input id="bridgeKey" type="password" autocomplete="off" placeholder="Cole a chave do bridge">
-      <div class="note">Por segurança, a chave não é salva em localStorage.</div>
+      <h2>Acesso seguro</h2>
+      <div id="loginPane">
+        <p class="copy">Conecte este aparelho uma vez. Depois, o navegador usa uma sessão segura por até 30 dias.</p>
+        <label for="bridgeKey">Chave do bridge</label>
+        <input id="bridgeKey" type="password" autocomplete="current-password" placeholder="Digite a chave">
+        <button id="loginBtn" class="primary">Conectar este dispositivo</button>
+        <div class="note">A chave não é gravada em localStorage e é descartada da página após o login.</div>
+      </div>
+
+      <div id="sessionPane" class="hidden">
+        <div class="session">
+          <div class="session-main">
+            <span class="dot good"></span>
+            <div><strong>Dispositivo conectado</strong><div id="profileState" class="note">Profile TinyFish: verificando…</div></div>
+          </div>
+          <button id="logoutBtn" class="ghost">Sair deste aparelho</button>
+        </div>
+      </div>
     </section>
 
     <section class="card">
       <h2>Tarefa</h2>
+      <p class="copy">Escolha um atalho ou descreva uma tarefa curta.</p>
       <div class="presets">
         <button class="secondary" data-preset="oauth-audience">Google OAuth · Audience</button>
         <button class="secondary" data-preset="oauth-client">Google OAuth · Client</button>
@@ -66,28 +80,23 @@
       <input id="targetUrl" type="url" inputmode="url" placeholder="https://console.cloud.google.com/">
 
       <label for="goal">Objetivo</label>
-      <textarea id="goal" placeholder="Descreva uma tarefa curta e objetiva."></textarea>
+      <textarea id="goal" placeholder="Descreva o que o navegador deve fazer."></textarea>
 
-      <div class="grid">
-        <div>
-          <label for="browserProfile">Browser profile</label>
-          <select id="browserProfile"><option value="stealth">stealth</option><option value="lite">lite</option></select>
+      <details>
+        <summary>Opções avançadas</summary>
+        <label for="browserProfile">Modo do navegador</label>
+        <select id="browserProfile"><option value="stealth">stealth</option><option value="lite">lite</option></select>
+        <div class="row">
+          <input id="useProfile" type="checkbox">
+          <label for="useProfile">Usar sessão Google salva no TinyFish</label>
         </div>
-        <div>
-          <label for="profileId">Profile ID</label>
-          <input id="profileId" placeholder="prof_…" autocomplete="off">
-        </div>
-      </div>
+        <div class="note">A sessão Google fica configurada no Render; não precisa digitar nada aqui.</div>
+      </details>
 
-      <div class="row" style="margin-top:12px">
-        <input id="useProfile" type="checkbox">
-        <label for="useProfile">Usar Browser Context Profile salvo</label>
-      </div>
-
-      <button id="runBtn" class="primary">Executar tarefa</button>
+      <button id="runBtn" class="primary" disabled>Executar tarefa</button>
 
       <div id="statusBox" class="status hidden">
-        <div><span id="statusDot" class="dot"></span><strong id="statusText">—</strong></div>
+        <div><span id="statusDot" class="dot"></span> <strong id="statusText">—</strong></div>
         <button id="pollBtn" class="ghost">Atualizar</button>
       </div>
       <div id="runMeta" class="meta hidden"></div>
@@ -103,17 +112,21 @@
       <pre id="error"></pre>
     </section>
 
-    <div class="footer">Voyage Automation Bridge · read-only by default for audit presets</div>
+    <div class="footer">Voyage Automation Bridge · ações de auditoria em modo somente leitura</div>
   </main>
 
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
   const bridgeKey = $('bridgeKey');
+  const loginPane = $('loginPane');
+  const sessionPane = $('sessionPane');
+  const loginBtn = $('loginBtn');
+  const logoutBtn = $('logoutBtn');
+  const profileState = $('profileState');
   const targetUrl = $('targetUrl');
   const goal = $('goal');
   const browserProfile = $('browserProfile');
-  const profileId = $('profileId');
   const useProfile = $('useProfile');
   const runBtn = $('runBtn');
   const pollBtn = $('pollBtn');
@@ -125,6 +138,9 @@
   const result = $('result');
   const errorCard = $('errorCard');
   const error = $('error');
+
+  let authenticated = false;
+  let profileConfigured = false;
   let currentRunId = null;
   let timer = null;
 
@@ -132,24 +148,37 @@
     'oauth-audience': {
       url: 'https://console.cloud.google.com/',
       profile: true,
+      mode: 'stealth',
       goal: `READ-ONLY task.\n\nInspect only Google Auth Platform audience/publishing configuration for the currently active project.\n\nReport only:\n1. active project name/id\n2. publishing status: Testing or Production\n3. whether test users are configured\n4. whether the currently signed-in account is listed as an allowed test user, if visible\n\nDo not inspect client secrets. Do not modify anything. Do not navigate to unrelated settings. If authentication, MFA or reauthentication is required, stop and report that. Return as soon as these four items are known.`
     },
     'oauth-client': {
       url: 'https://console.cloud.google.com/apis/credentials',
       profile: true,
+      mode: 'stealth',
       goal: `READ-ONLY task. Inspect only the OAuth client used by Voyage. Report application type, authorized JavaScript origins and authorized redirect URIs. Do not reveal client secrets. Do not modify anything. If authentication, MFA or reauthentication is required, stop and report that. Return immediately after these items are known.`
     },
     gmail: {
       url: 'https://console.cloud.google.com/apis/library/gmail.googleapis.com',
       profile: true,
+      mode: 'stealth',
       goal: `READ-ONLY task. Report only whether the Gmail API is enabled for the active project and which OAuth scopes are configured for Google Auth Platform if visible. Confirm whether https://www.googleapis.com/auth/gmail.readonly is present. Do not modify anything and do not reveal secrets. Stop if reauthentication is required.`
     },
     hn: {
       url: 'https://news.ycombinator.com/',
       profile: false,
+      mode: 'lite',
       goal: 'Read the current Hacker News front page and report the title of the top story.'
     }
   };
+
+  function renderSession() {
+    loginPane.classList.toggle('hidden', authenticated);
+    sessionPane.classList.toggle('hidden', !authenticated);
+    runBtn.disabled = !authenticated;
+    profileState.textContent = profileConfigured
+      ? 'Profile TinyFish: configurado no servidor'
+      : 'Profile TinyFish: não configurado';
+  }
 
   function setPreset(name) {
     const p = presets[name];
@@ -157,7 +186,7 @@
     targetUrl.value = p.url;
     goal.value = p.goal;
     useProfile.checked = p.profile;
-    browserProfile.value = p.profile ? 'stealth' : 'lite';
+    browserProfile.value = p.mode;
   }
 
   function setStatus(value) {
@@ -165,7 +194,7 @@
     statusText.textContent = value || 'UNKNOWN';
     statusDot.className = 'dot';
     if (['PENDING','RUNNING'].includes(value)) statusDot.classList.add('run');
-    else if (value === 'COMPLETED') statusDot.classList.add('ok');
+    else if (value === 'COMPLETED') statusDot.classList.add('good');
     else if (['FAILED','CANCELLED'].includes(value)) statusDot.classList.add('bad');
   }
 
@@ -182,19 +211,21 @@
     runMeta.classList.add('hidden');
   }
 
-  async function api(path, options = {}) {
-    const key = bridgeKey.value.trim();
-    if (!key) throw new Error('Informe a BRIDGE_API_KEY.');
+  async function request(path, options = {}) {
     const response = await fetch(path, {
+      credentials: 'same-origin',
       ...options,
       headers: {
-        'Content-Type': 'application/json',
-        'X-Bridge-Key': key,
+        ...(options.body ? {'Content-Type':'application/json'} : {}),
         ...(options.headers || {})
       }
     });
     const body = await response.json().catch(() => ({ ok:false, error:'invalid_response' }));
     if (!response.ok) {
+      if (response.status === 401) {
+        authenticated = false;
+        renderSession();
+      }
       const e = new Error(body.error || `HTTP ${response.status}`);
       e.body = body;
       throw e;
@@ -202,27 +233,69 @@
     return body;
   }
 
+  async function checkSession() {
+    try {
+      const state = await request('/v1/session');
+      authenticated = state.authenticated === true;
+      profileConfigured = state.profileConfigured === true;
+    } catch {
+      authenticated = false;
+    }
+    renderSession();
+  }
+
+  async function login() {
+    clearOutput();
+    const key = bridgeKey.value;
+    if (!key) return showError('Digite a chave do bridge.');
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Conectando…';
+    try {
+      const state = await request('/v1/session/login', {
+        method: 'POST',
+        body: JSON.stringify({ bridgeKey: key })
+      });
+      bridgeKey.value = '';
+      authenticated = state.authenticated === true;
+      profileConfigured = state.profileConfigured === true;
+      renderSession();
+    } catch (e) {
+      showError(e.body || e.message || 'Não foi possível conectar este dispositivo.');
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Conectar este dispositivo';
+    }
+  }
+
+  async function logout() {
+    stopPolling();
+    try { await request('/v1/session/logout', { method:'POST', body:'{}' }); } catch {}
+    authenticated = false;
+    currentRunId = null;
+    clearOutput();
+    renderSession();
+  }
+
   async function startRun() {
     clearOutput();
-    if (!targetUrl.value.trim() || !goal.value.trim()) {
-      showError('Preencha URL e objetivo.');
-      return;
+    if (!authenticated) return showError('Conecte este dispositivo primeiro.');
+    if (!targetUrl.value.trim() || !goal.value.trim()) return showError('Preencha URL e objetivo.');
+    if (useProfile.checked && !profileConfigured) {
+      return showError('O Browser Context Profile ainda não está configurado no servidor.');
     }
-    if (profileId.value.trim() && !useProfile.checked) {
-      showError('Marque “Usar Browser Context Profile salvo” para enviar um Profile ID.');
-      return;
-    }
+
     runBtn.disabled = true;
     runBtn.textContent = 'Enviando…';
     try {
-      const body = {
-        url: targetUrl.value.trim(),
-        goal: goal.value.trim(),
-        browserProfile: browserProfile.value,
-        useProfile: useProfile.checked
-      };
-      if (profileId.value.trim()) body.profileId = profileId.value.trim();
-      const created = await api('/v1/tinyfish/runs', { method:'POST', body: JSON.stringify(body) });
+      const created = await request('/v1/tinyfish/runs', {
+        method:'POST',
+        body: JSON.stringify({
+          url: targetUrl.value.trim(),
+          goal: goal.value.trim(),
+          browserProfile: browserProfile.value,
+          useProfile: useProfile.checked
+        })
+      });
       currentRunId = created.run_id;
       if (!currentRunId) throw new Error(created.error || 'TinyFish não retornou run_id.');
       setStatus('PENDING');
@@ -232,15 +305,15 @@
     } catch (e) {
       showError(e.body || e.message || 'Falha ao iniciar tarefa.');
     } finally {
-      runBtn.disabled = false;
+      runBtn.disabled = !authenticated;
       runBtn.textContent = 'Executar tarefa';
     }
   }
 
   async function poll() {
-    if (!currentRunId) return;
+    if (!currentRunId || !authenticated) return;
     try {
-      const payload = await api(`/v1/tinyfish/runs/${encodeURIComponent(currentRunId)}`, { method:'GET', headers:{'Content-Type':'application/json'} });
+      const payload = await request(`/v1/tinyfish/runs/${encodeURIComponent(currentRunId)}`);
       const run = payload.run || {};
       setStatus(run.status);
       const parts = [`run_id: ${run.run_id || currentRunId}`];
@@ -249,6 +322,7 @@
       if (run.finished_at) parts.push(`finished: ${run.finished_at}`);
       runMeta.classList.remove('hidden');
       runMeta.textContent = parts.join(' · ');
+
       if (run.status === 'COMPLETED') {
         stopPolling();
         resultCard.classList.remove('hidden');
@@ -268,17 +342,29 @@
   function schedulePoll(ms) { stopPolling(); timer = setTimeout(poll, ms); }
   function stopPolling() { if (timer) clearTimeout(timer); timer = null; }
 
-  document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => setPreset(b.dataset.preset)));
+  document.querySelectorAll('[data-preset]').forEach((button) =>
+    button.addEventListener('click', () => setPreset(button.dataset.preset))
+  );
+  loginBtn.addEventListener('click', login);
+  logoutBtn.addEventListener('click', logout);
   runBtn.addEventListener('click', startRun);
   pollBtn.addEventListener('click', () => { stopPolling(); poll(); });
+  bridgeKey.addEventListener('keydown', (event) => { if (event.key === 'Enter') login(); });
 
-  fetch('/health').then(r => r.json()).then(h => {
-    const badge = $('healthBadge');
-    const ok = h.ok && h.tinyfishConfigured && h.bridgeAuthConfigured;
-    badge.textContent = ok ? 'bridge online' : 'configuração incompleta';
-    badge.style.color = ok ? 'var(--good)' : 'var(--warn)';
-  }).catch(() => { $('healthBadge').textContent = 'bridge indisponível'; $('healthBadge').style.color = 'var(--bad)'; });
+  fetch('/health', { credentials:'same-origin' })
+    .then((response) => response.json())
+    .then((body) => {
+      const badge = $('healthBadge');
+      const ok = body.ok && body.tinyfishConfigured && body.bridgeAuthConfigured;
+      badge.textContent = ok ? 'bridge online' : 'configuração incompleta';
+      if (typeof body.tinyfishProfileConfigured === 'boolean') {
+        profileConfigured = body.tinyfishProfileConfigured;
+        renderSession();
+      }
+    })
+    .catch(() => { $('healthBadge').textContent = 'bridge indisponível'; });
 
+  checkSession();
   setPreset('oauth-audience');
 })();
 </script>

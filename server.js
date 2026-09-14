@@ -5,10 +5,13 @@ import { readFileSync } from 'node:fs';
 const PORT = Number(process.env.PORT || 3000);
 const TINYFISH_API_KEY = process.env.TINYFISH_API_KEY || '';
 const BRIDGE_API_KEY = process.env.BRIDGE_API_KEY || '';
+const TINYFISH_PROFILE_ID = (process.env.TINYFISH_PROFILE_ID || '').trim();
 const TINYFISH_BASE_URL = 'https://agent.tinyfish.ai';
 const RATE_LIMIT_PER_MINUTE = Math.max(1, Math.min(120, Number(process.env.RATE_LIMIT_PER_MINUTE || 20)));
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_GOAL_LENGTH = 6000;
+const SESSION_COOKIE_NAME = 'voyage_console_session';
+const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 const CONSOLE_HTML = readFileSync(new URL('./public/console.html', import.meta.url), 'utf8');
 const allowedHosts = new Set(
   (process.env.ALLOWED_HOSTS || 'console.cloud.google.com,news.ycombinator.com')
@@ -30,11 +33,12 @@ function commonHeaders(contentType) {
   };
 }
 
-function json(res, status, body) {
+function json(res, status, body, extraHeaders = {}) {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
     ...commonHeaders('application/json; charset=utf-8'),
     'content-length': Buffer.byteLength(payload),
+    ...extraHeaders,
   });
   res.end(payload);
 }
@@ -64,9 +68,63 @@ function secureEqual(a, b) {
   return crypto.timingSafeEqual(left, right);
 }
 
+function sessionSecret(secret) {
+  return crypto.createHash('sha256').update(`voyage-console-session\0${secret}`).digest();
+}
+
+export function createSessionToken(secret, now = Date.now(), ttlSeconds = SESSION_TTL_SECONDS) {
+  if (!secret) return '';
+  const expiresAt = Math.floor(now / 1000) + ttlSeconds;
+  const nonce = crypto.randomBytes(18).toString('base64url');
+  const payload = `v1.${expiresAt}.${nonce}`;
+  const signature = crypto.createHmac('sha256', sessionSecret(secret)).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
+}
+
+export function verifySessionToken(token, secret, now = Date.now()) {
+  if (!token || !secret) return false;
+  const parts = String(token).split('.');
+  if (parts.length !== 4) return false;
+  const [version, expiresText, nonce, signature] = parts;
+  if (version !== 'v1' || !nonce || !signature || !/^\d+$/.test(expiresText)) return false;
+  const expiresAt = Number(expiresText);
+  if (!Number.isSafeInteger(expiresAt) || expiresAt <= Math.floor(now / 1000)) return false;
+  const payload = `${version}.${expiresText}.${nonce}`;
+  const expected = crypto.createHmac('sha256', sessionSecret(secret)).update(payload).digest('base64url');
+  return secureEqual(signature, expected);
+}
+
+function parseCookies(headers = {}) {
+  const raw = headers.cookie || headers.Cookie || '';
+  const cookies = new Map();
+  for (const chunk of String(raw).split(';')) {
+    const separator = chunk.indexOf('=');
+    if (separator <= 0) continue;
+    const key = chunk.slice(0, separator).trim();
+    const value = chunk.slice(separator + 1).trim();
+    if (key) cookies.set(key, value);
+  }
+  return cookies;
+}
+
 export function isAuthorized(headers = {}) {
   const presented = headers['x-bridge-key'] || headers['X-Bridge-Key'];
   return secureEqual(presented, BRIDGE_API_KEY);
+}
+
+function isSessionAuthorized(headers = {}) {
+  const token = parseCookies(headers).get(SESSION_COOKIE_NAME);
+  return verifySessionToken(token, BRIDGE_API_KEY);
+}
+
+function isRequestAuthorized(headers = {}) {
+  return isAuthorized(headers) || isSessionAuthorized(headers);
+}
+
+export function resolveProfileId(rawProfileId, configuredProfileId = TINYFISH_PROFILE_ID) {
+  const requested = typeof rawProfileId === 'string' ? rawProfileId.trim() : '';
+  const configured = typeof configuredProfileId === 'string' ? configuredProfileId.trim() : '';
+  return requested || configured;
 }
 
 export function validateTargetUrl(rawUrl) {
@@ -182,6 +240,35 @@ async function tinyfishFetch(path, options = {}) {
   return body;
 }
 
+async function handleLogin(req, res) {
+  const body = await readJson(req);
+  const presented = typeof body.bridgeKey === 'string' ? body.bridgeKey : '';
+  if (!secureEqual(presented, BRIDGE_API_KEY)) {
+    return json(res, 401, { ok: false, error: 'unauthorized' });
+  }
+
+  const token = createSessionToken(BRIDGE_API_KEY);
+  return json(
+    res,
+    200,
+    { ok: true, authenticated: true, profileConfigured: Boolean(TINYFISH_PROFILE_ID) },
+    {
+      'set-cookie': `${SESSION_COOKIE_NAME}=${token}; Path=/; Max-Age=${SESSION_TTL_SECONDS}; HttpOnly; Secure; SameSite=Strict`,
+    },
+  );
+}
+
+function handleLogout(res) {
+  return json(
+    res,
+    200,
+    { ok: true, authenticated: false },
+    {
+      'set-cookie': `${SESSION_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict`,
+    },
+  );
+}
+
 async function handleCreateRun(req, res) {
   const body = await readJson(req);
   const urlCheck = validateTargetUrl(body.url);
@@ -193,12 +280,17 @@ async function handleCreateRun(req, res) {
 
   const browserProfile = body.browserProfile === 'stealth' ? 'stealth' : 'lite';
   const useProfile = body.useProfile === true;
-  const profileId = typeof body.profileId === 'string' ? body.profileId.trim() : '';
-  if (profileId && !/^prof_[A-Za-z0-9_-]{6,128}$/.test(profileId)) {
-    return json(res, 400, { ok: false, error: 'invalid_profile_id' });
-  }
-  if (profileId && !useProfile) {
+  const requestedProfileId = typeof body.profileId === 'string' ? body.profileId.trim() : '';
+  if (requestedProfileId && !useProfile) {
     return json(res, 400, { ok: false, error: 'profile_id_requires_use_profile' });
+  }
+
+  const profileId = useProfile ? resolveProfileId(requestedProfileId) : '';
+  if (profileId && !/^prof_[A-Za-z0-9_-]{6,128}$/.test(profileId)) {
+    return json(res, requestedProfileId ? 400 : 503, {
+      ok: false,
+      error: requestedProfileId ? 'invalid_profile_id' : 'invalid_profile_id_configuration',
+    });
   }
 
   const payload = {
@@ -248,14 +340,33 @@ async function handler(req, res) {
         service: 'voyage-automation-bridge',
         tinyfishConfigured: Boolean(TINYFISH_API_KEY),
         bridgeAuthConfigured: Boolean(BRIDGE_API_KEY),
+        tinyfishProfileConfigured: Boolean(TINYFISH_PROFILE_ID),
       });
+    }
+
+    if (req.method === 'GET' && pathname === '/v1/session') {
+      return json(res, 200, {
+        ok: true,
+        authenticated: isSessionAuthorized(req.headers),
+        profileConfigured: Boolean(TINYFISH_PROFILE_ID),
+      });
+    }
+
+    if (req.method === 'POST' && pathname === '/v1/session/logout') {
+      return handleLogout(res);
+    }
+
+    if (req.method === 'POST' && pathname === '/v1/session/login') {
+      if (!BRIDGE_API_KEY) return json(res, 503, { ok: false, error: 'service_not_configured' });
+      if (!checkRateLimit(req)) return json(res, 429, { ok: false, error: 'rate_limited' });
+      return await handleLogin(req, res);
     }
 
     if (!TINYFISH_API_KEY || !BRIDGE_API_KEY) {
       return json(res, 503, { ok: false, error: 'service_not_configured' });
     }
 
-    if (!isAuthorized(req.headers)) {
+    if (!isRequestAuthorized(req.headers)) {
       return json(res, 401, { ok: false, error: 'unauthorized' });
     }
 
